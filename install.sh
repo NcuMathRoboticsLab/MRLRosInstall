@@ -48,6 +48,7 @@ sudo apt install -y python3-argcomplete python3-colcon-common-extensions python3
 echo "[Make the colcon workspace and test colcon build]"
 mkdir -p $HOME/$colcon_workspace/src
 cd $HOME/$colcon_workspace/src
+git clone https://github.com/NcuMathRoboticsLab/mrlrobot_sample_code.git -b jazzy
 cd $HOME/$colcon_workspace
 colcon build --symlink-install
 
