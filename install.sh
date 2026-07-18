@@ -20,7 +20,7 @@ sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
 
 echo "[Setup Sources]"
-sudo rm -rf /var/lib/apt/lists/* && sudo apt update && sudo apt install -y curl gnupg2 lsb-release
+sudo rm -rf /var/lib/apt/lists/* && sudo apt update && sudo apt install -y curl gnupg2 lsb-release git build-essential
 sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
 sudo sh -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null'
 
@@ -34,22 +34,28 @@ sudo apt update && sudo apt install -y ros-$ros_version-desktop \
   ros-$ros_version-interactive-markers ros-$ros_version-dynamixel-sdk \
   ros-$ros_version-cartographer ros-$ros_version-cartographer-ros \
   ros-$ros_version-nav2-bringup ros-$ros_version-ros-gz \
-  ros-$ros_version-turtlesim
+  ros-$ros_version-turtlesim python3-rosdep python3-vcstool \
+  python3-argcomplete python3-colcon-common-extensions
 
 echo "[Environment setup]"
 source /opt/ros/$ros_version/setup.sh
-sudo apt install -y python3-argcomplete python3-colcon-common-extensions python3-vcstool python3-rosdep git
+sudo apt install -y  
 
-# echo "[Install dependencies]"
-# sudo rosdep init && rosdep update
-# cd $HOME/$colcon_workspace
-# rosdep install -y --from-paths src --ignore-src --rosdistro $ros_version
+echo "[Make the colcon workspace]"
+mkdir -p $HOME/$colcon_workspace/src && cd $HOME/$colcon_workspace/src
+git clone -b jazzy https://github.com/NcuMathRoboticsLab/mrlrobot_sample_code.git
+mkdir -p $HOME/$colcon_workspace/src/turtlebot3 && cd $HOME/$colcon_workspace/src/turtlebot3
+git clone -b jazzy https://github.com/ROBOTIS-GIT/DynamixelSDK.git
+git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git
+git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3.git
+git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git
 
-echo "[Make the colcon workspace and test colcon build]"
-mkdir -p $HOME/$colcon_workspace/src
-cd $HOME/$colcon_workspace/src
-git clone https://github.com/NcuMathRoboticsLab/mrlrobot_sample_code.git -b jazzy
+echo "[Install dependencies]"
+sudo rosdep init && rosdep update
 cd $HOME/$colcon_workspace
+rosdep install -y --from-paths src --ignore-src --rosdistro $ros_version
+
+echo "[Test colcon build]"
 colcon build --symlink-install
 
 echo "[Set the ROS evironment]"
@@ -74,6 +80,7 @@ sh -c "echo \"export ROS_DOMAIN_ID=30 # 0~101\" >> ~/.bashrc"
 source ~/.bashrc
 
 echo "[Complete!!!]"
+echo "Please restart the terminal or run `source ~/.bashrc`"
 
 exec bash
 exit 0
