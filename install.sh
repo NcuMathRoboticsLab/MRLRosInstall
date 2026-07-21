@@ -9,22 +9,22 @@ echo "PRESS [ENTER] TO CONTINUE THE INSTALLATION"
 echo "IF YOU WANT TO CANCEL, PRESS [CTRL] + [C]"
 read
 
-echo "[Set the target ROS version and name of colcon workspace]"
+echo "[1/8] Set the target ROS version and name of colcon workspace..."
 ros_version=${ros_version:="jazzy"}
 colcon_workspace=${colcon_workspace:="colcon_ws"}
 
-echo "[Set Locale]"
+echo "[2/8] Set Locale..."
 sudo apt update && sudo apt install -y locales
 sudo locale-gen en_US en_US.UTF-8
 sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 export LANG=en_US.UTF-8
 
-echo "[Setup Sources]"
+echo "[3/8] Setup ROS 2 Sources..."
 sudo rm -rf /var/lib/apt/lists/* && sudo apt update && sudo apt install -y curl gnupg2 lsb-release git build-essential
 sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
 sudo sh -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null'
 
-echo "[Install ROS 2 packages]"
+echo "[4/8] Install ROS 2 packages"
 sudo apt update && sudo apt install -y ros-$ros_version-desktop \
   ros-$ros_version-joy ros-$ros_version-teleop-twist-joy \
   ros-$ros_version-teleop-twist-keyboard ros-$ros_version-laser-proc \
@@ -37,50 +37,50 @@ sudo apt update && sudo apt install -y ros-$ros_version-desktop \
   ros-$ros_version-turtlesim python3-rosdep python3-vcstool \
   python3-argcomplete python3-colcon-common-extensions
 
-echo "[Environment setup]"
-source /opt/ros/$ros_version/setup.sh
-sudo apt install -y  
-
-echo "[Make the colcon workspace]"
-mkdir -p $HOME/$colcon_workspace/src && cd $HOME/$colcon_workspace/src
+echo "[5/8] Make the colcon workspace & Clone repos..."
+source /opt/ros/$ros_version/setup.bash
+mkdir -p "$HOME/$colcon_workspace/src" && cd "$HOME/$colcon_workspace/src" || exit
 git clone -b jazzy https://github.com/NcuMathRoboticsLab/mrlrobot_sample_code.git
-mkdir -p $HOME/$colcon_workspace/src/turtlebot3 && cd $HOME/$colcon_workspace/src/turtlebot3
+mkdir -p $HOME/$colcon_workspace/src/turtlebot3 && cd $HOME/$colcon_workspace/src/turtlebot3 || exit
 git clone -b jazzy https://github.com/ROBOTIS-GIT/DynamixelSDK.git
 git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git
 git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3.git
 git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git
 
-echo "[Install dependencies]"
-sudo rosdep init && rosdep update
+echo "[6/8] Install ROS dependencies"
+if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
+    sudo rosdep init
+fi
+rosdep update
 cd $HOME/$colcon_workspace
 rosdep install -y --from-paths src --ignore-src --rosdistro $ros_version
 
-echo "[Test colcon build]"
+echo "[7/8] Build colcon workspace..."
 colcon build --symlink-install
 
-echo "[Set the ROS evironment]"
-sh -c "echo \"\" >> ~/.bashrc"
-sh -c "echo \"alias eb='vim ~/.bashrc'\" >> ~/.bashrc"
-sh -c "echo \"alias nb='nano ~/.bashrc'\" >> ~/.bashrc"
-sh -c "echo \"alias sb='source ~/.bashrc'\" >> ~/.bashrc"
-sh -c "echo \"alias gs='git status'\" >> ~/.bashrc"
-sh -c "echo \"alias gp='git pull'\" >> ~/.bashrc"
+echo "[8/8] Configure environment variables and aliases..."
+TARGET_SHELL="bash"
+TARGET_SHELL_RC="$HOME/.bashrc"
 
-sh -c "echo \"\" >> ~/.bashrc"
-sh -c "echo \"alias cw='cd ~/$colcon_workspace'\" >> ~/.bashrc"
-sh -c "echo \"alias cs='cd ~/$colcon_workspace/src'\" >> ~/.bashrc"
-sh -c "echo \"alias cb='cd ~/$colcon_workspace && colcon build --symlink-install && source ~/.bashrc'\" >> ~/.bashrc"
+if [ -n "$ZSH_VERSION" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
+    TARGET_SHELL_RC="$HOME/.zshrc"
+fi
 
-sh -c "echo \"\" >> ~/.bashrc"
-sh -c "echo \"source /opt/ros/$ros_version/setup.bash\" >> ~/.bashrc"
-sh -c "echo \"source ~/$colcon_workspace/install/setup.bash\" >> ~/.bashrc"
+{
+    echo ""
+    echo "alias cw='cd ~/$colcon_workspace'"
+    echo "alias cs='cd ~/$colcon_workspace/src'"
+    echo "alias cb='cd ~/$colcon_workspace && colcon build --symlink-install && source $TARGET_SHELL_RC'"
+    echo ""
+    echo "source /opt/ros/$ros_version/setup.$TARGET_SHELL"
+    echo "[ -f ~/$colcon_workspace/install/setup.$TARGET_SHELL ] && source ~/$colcon_workspace/install/setup.$TARGET_SHELL"
+    echo ""
+    echo "export ROS_DOMAIN_ID=30 # 0~101"
+    echo "export ROS_LOCALHOST_ONLY=0"
+} >> "$TARGET_SHELL_RC"
 
-sh -c "echo \"export ROS_DOMAIN_ID=30 # 0~101\" >> ~/.bashrc"
-
-source ~/.bashrc
-
-echo "[Complete!!!]"
-echo "Please restart the terminal or run `source ~/.bashrc`"
+echo "[Complete!!!] ROS 2 Jazzy environment installed."
+echo "Please restart the terminal or run source $TARGET_SHELL_RC"
 
 exec bash
 exit 0
